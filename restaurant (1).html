@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>점심 식당 추천기</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f0;
+      color: #1a1a1a;
+      padding: 20px;
+    }
+    h1 { font-size: 20px; font-weight: 600; margin-bottom: 20px; text-align: center; }
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 14px;
+      border: 1px solid #e8e8e4;
+    }
+    .section-title {
+      font-size: 12px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 10px;
+    }
+
+    /* 이동 수단 탭 */
+    .mode-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .mode-btn {
+      flex: 1;
+      padding: 9px;
+      font-size: 14px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      background: #f5f5f0;
+      color: #888;
+      cursor: pointer;
+      text-align: center;
+    }
+    .mode-btn.active {
+      background: #185FA5;
+      color: #fff;
+      border-color: #185FA5;
+      font-weight: 600;
+    }
+
+    .range-row { display: flex; align-items: center; gap: 12px; }
+    input[type=range] { flex: 1; accent-color: #185FA5; }
+    .range-val { font-size: 14px; font-weight: 600; color: #185FA5; min-width: 70px; text-align: right; }
+
+    .cat-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .cat-btn {
+      font-size: 13px; padding: 6px 14px;
+      border-radius: 20px; border: 1px solid #ddd;
+      background: #fff; color: #555; cursor: pointer;
+    }
+    .cat-btn.active { background: #185FA5; color: #fff; border-color: #185FA5; }
+
+    .search-btn {
+      width: 100%; padding: 14px; font-size: 15px; font-weight: 600;
+      border-radius: 12px; border: none; background: #185FA5;
+      color: #fff; cursor: pointer; margin-bottom: 20px;
+    }
+    .search-btn:active { opacity: 0.8; }
+
+    .result-card {
+      background: #fff; border-radius: 14px; padding: 16px;
+      margin-bottom: 12px; border: 1px solid #e8e8e4; position: relative;
+    }
+    .result-card.top { border: 2px solid #185FA5; }
+    .rank { position: absolute; top: 14px; right: 16px; font-size: 22px; font-weight: 700; color: #ddd; }
+    .rest-name { font-size: 16px; font-weight: 600; margin-bottom: 8px; padding-right: 30px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .badge { font-size: 12px; padding: 3px 9px; border-radius: 10px; background: #f0f0ea; color: #555; }
+    .badge.open { background: #e1f5ee; color: #0f6e56; }
+    .badge.drive { background: #fff3e0; color: #e65100; }
+    .menu { font-size: 13px; color: #555; margin-bottom: 8px; }
+    .reason { font-size: 12px; color: #185FA5; background: #e6f1fb; padding: 6px 10px; border-radius: 8px; margin-bottom: 10px; }
+    .score-label { font-size: 11px; color: #aaa; display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .bar-bg { height: 4px; background: #f0f0ea; border-radius: 2px; }
+    .bar { height: 4px; background: #185FA5; border-radius: 2px; }
+    .empty { text-align: center; padding: 30px 0; color: #aaa; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<h1>🍱 점심 식당 추천기</h1>
+
+<!-- 이동 수단 선택 -->
+<div class="card">
+  <div class="section-title">이동 수단</div>
+  <div class="mode-row">
+    <div class="mode-btn active" id="btn-walk" onclick="setMode('walk')">🚶 도보</div>
+    <div class="mode-btn" id="btn-drive" onclick="setMode('drive')">🚗 차량</div>
+  </div>
+  <div class="range-row">
+    <input type="range" id="distRange" min="5" max="30" value="10" step="5"
+      oninput="document.getElementById('distVal').textContent = this.value + '분 이내'">
+    <span class="range-val" id="distVal">10분 이내</span>
+  </div>
+</div>
+
+<!-- 평점 설정 -->
+<div class="card">
+  <div class="section-title">최소 평점</div>
+  <div class="range-row">
+    <input type="range" min="3" max="5" value="4" step="0.5" id="ratingRange"
+      oninput="document.getElementById('ratingVal').textContent = this.value + '점 이상'">
+    <span class="range-val" id="ratingVal">4점 이상</span>
+  </div>
+</div>
+
+<!-- 카테고리 선택 -->
+<div class="card">
+  <div class="section-title">음식 카테고리</div>
+  <div class="cat-grid">
+    <div class="cat-btn active" onclick="toggleCat(this, '한식')">한식</div>
+    <div class="cat-btn" onclick="toggleCat(this, '일식')">일식</div>
+    <div class="cat-btn" onclick="toggleCat(this, '중식')">중식</div>
+    <div class="cat-btn" onclick="toggleCat(this, '양식')">양식</div>
+    <div class="cat-btn" onclick="toggleCat(this, '분식')">분식</div>
+    <div class="cat-btn" onclick="toggleCat(this, '패스트푸드')">패스트푸드</div>
+    <div class="cat-btn" onclick="toggleCat(this, '전체')">전체</div>
+  </div>
+</div>
+
+<button class="search-btn" onclick="recommend()">지금 가기 좋은 식당 찾기 →</button>
+
+<div id="results"></div>
+
+<script>
+  // =============================================
+  // 식당 데이터 — 추가/수정은 여기서 하세요!
+  // distance_min = 도보(분), drive_min = 차량(분)
+  // open = [시작시간, 종료시간] 24시 기준
+  // =============================================
+  const RESTAURANTS = [
+    { name: "한솥도시락",   category: "한식",       distance_min: 3,  drive_min: 2,  rating: 4.1, open: [10, 21], menu: "불고기덮밥, 제육볶음",     reason: "도보 3분, 빠른 픽업 가능" },
+    { name: "스시로",       category: "일식",       distance_min: 5,  drive_min: 3,  rating: 4.5, open: [11, 22], menu: "연어초밥, 우동",           reason: "평점 최상위, 신선한 재료" },
+    { name: "홍콩반점",     category: "중식",       distance_min: 4,  drive_min: 2,  rating: 3.9, open: [11, 21], menu: "짜장면, 짬뽕",            reason: "중식 전문, 가성비 우수" },
+    { name: "맘스터치",     category: "패스트푸드", distance_min: 2,  drive_min: 2,  rating: 4.0, open: [9,  23], menu: "싸이버거, 치킨텐더",       reason: "가장 가까운 거리, 빠른 식사" },
+    { name: "본죽",         category: "한식",       distance_min: 6,  drive_min: 3,  rating: 4.3, open: [8,  20], menu: "전복죽, 야채죽",          reason: "건강식 원할 때 추천" },
+    { name: "파스타집",     category: "양식",       distance_min: 8,  drive_min: 4,  rating: 4.6, open: [11, 21], menu: "까르보나라, 알리오올리오",  reason: "평점 최고, 분위기 좋은 점심" },
+    { name: "명동칼국수",   category: "한식",       distance_min: 7,  drive_min: 4,  rating: 4.2, open: [10, 20], menu: "바지락칼국수, 만두",       reason: "든든한 국물 요리 전문" },
+    { name: "이자카야하루", category: "일식",       distance_min: 9,  drive_min: 5,  rating: 4.4, open: [12, 22], menu: "규동, 라멘",              reason: "점심 특선 메뉴 운영" },
+    { name: "분식왕",       category: "분식",       distance_min: 4,  drive_min: 2,  rating: 4.0, open: [9,  19], menu: "순대국밥, 떡볶이",         reason: "저렴하고 빠른 분식" },
+    { name: "청담순두부",   category: "한식",       distance_min: 11, drive_min: 6,  rating: 4.1, open: [10, 21], menu: "순두부찌개, 비빔밥",       reason: "건강한 한식 정식" },
+    { name: "아웃백",       category: "양식",       distance_min: 25, drive_min: 8,  rating: 4.3, open: [11, 22], menu: "스테이크, 파스타",         reason: "차량으로 부담없는 거리" },
+    { name: "전주비빔밥",   category: "한식",       distance_min: 20, drive_min: 7,  rating: 4.5, open: [10, 21], menu: "돌솥비빔밥, 콩나물국밥",   reason: "고평점 한식, 차량 7분" },
+  ];
+
+  let selectedCats = new Set(['한식']);
+  let currentMode = 'walk'; // 'walk' 또는 'drive'
+
+  // 이동 수단 전환
+  function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('btn-walk').classList.toggle('active', mode === 'walk');
+    document.getElementById('btn-drive').classList.toggle('active', mode === 'drive');
+
+    const slider = document.getElementById('distRange');
+    const label  = document.getElementById('distVal');
+
+    if (mode === 'walk') {
+      slider.min = 5; slider.max = 30; slider.step = 5;
+      slider.value = Math.min(slider.value, 30);
+    } else {
+      slider.min = 5; slider.max = 40; slider.step = 5;
+    }
+    label.textContent = slider.value + '분 이내';
+  }
+
+  // 카테고리 토글
+  function toggleCat(el, cat) {
+    if (cat === '전체') {
+      selectedCats.clear();
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      selectedCats.add('전체');
+      return;
+    }
+    document.querySelectorAll('.cat-btn').forEach(b => {
+      if (b.textContent === '전체') b.classList.remove('active');
+    });
+    selectedCats.delete('전체');
+    if (el.classList.contains('active')) {
+      el.classList.remove('active');
+      selectedCats.delete(cat);
+    } else {
+      el.classList.add('active');
+      selectedCats.add(cat);
+    }
+    if (selectedCats.size === 0) {
+      document.querySelector('.cat-btn:last-child').classList.add('active');
+      selectedCats.add('전체');
+    }
+  }
+
+  // 영업 중 확인
+  function isOpen(openHours) {
+    const h = new Date().getHours();
+    return h >= openHours[0] && h < openHours[1];
+  }
+
+  // 점수 계산
+  function calcScore(r, maxDist) {
+    const travelMin = currentMode === 'walk' ? r.distance_min : r.drive_min;
+    let score = 0;
+    score += Math.round(Math.max(0, (maxDist - travelMin) / maxDist * 40)); // 거리 40점
+    if (isOpen(r.open)) score += 30;                                         // 영업 중 30점
+    score += Math.round(r.rating * 4);                                       // 평점 20점
+    if (selectedCats.has('전체') || selectedCats.has(r.category)) score += 10; // 카테고리 10점
+    return score;
+  }
+
+  // 추천 실행
+  function recommend() {
+    const maxDist   = parseInt(document.getElementById('distRange').value);
+    const minRating = parseFloat(document.getElementById('ratingRange').value);
+    const isDrive   = currentMode === 'drive';
+
+    let filtered = RESTAURANTS.filter(r => {
+      const travelMin = isDrive ? r.drive_min : r.distance_min;
+      if (travelMin > maxDist) return false;
+      if (!isOpen(r.open)) return false;
+      if (r.rating < minRating) return false;
+      if (!selectedCats.has('전체') && !selectedCats.has(r.category)) return false;
+      return true;
+    });
+
+    let scored = filtered
+      .map(r => ({ ...r, score: calcScore(r, maxDist) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+
+    const el = document.getElementById('results');
+    if (scored.length === 0) {
+      el.innerHTML = '<div class="empty">조건에 맞는 식당이 없어요.<br>거리나 카테고리 조건을 넓혀보세요.</div>';
+      return;
+    }
+
+    el.innerHTML = scored.map((r, i) => {
+      const travelMin  = isDrive ? r.drive_min : r.distance_min;
+      const travelText = isDrive ? `차량 ${travelMin}분` : `도보 ${travelMin}분`;
+      const badgeClass = isDrive ? 'badge drive' : 'badge';
+      return `
+        <div class="result-card ${i === 0 ? 'top' : ''}">
+          <div class="rank">${i + 1}</div>
+          <div class="rest-name">${r.name}</div>
+          <div class="meta">
+            <span class="badge open">영업 중</span>
+            <span class="${badgeClass}">${travelText}</span>
+            <span class="badge">★ ${r.rating}</span>
+            <span class="badge">${r.category}</span>
+          </div>
+          <div class="menu">대표 메뉴: ${r.menu}</div>
+          <div class="reason">${r.reason}</div>
+          <div class="score-label"><span>추천 점수</span><span>${r.score} / 100</span></div>
+          <div class="bar-bg"><div class="bar" style="width:${r.score}%"></div></div>
+        </div>`;
+    }).join('');
+  }
+
+  recommend();
+</script>
+</body>
+</html>
