@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>점심 식당 추천기</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f0;
+      color: #1a1a1a;
+      padding: 20px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 20px; font-weight: 600; margin-bottom: 20px; text-align: center; }
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 14px;
+      border: 1px solid #e8e8e4;
+    }
+    .section-title {
+      font-size: 12px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 10px;
+    }
+    .mode-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .mode-btn {
+      flex: 1; padding: 9px; font-size: 14px;
+      border-radius: 10px; border: 1px solid #ddd;
+      background: #f5f5f0; color: #888; cursor: pointer; text-align: center;
+    }
+    .mode-btn.active { background: #185FA5; color: #fff; border-color: #185FA5; font-weight: 600; }
+    .range-row { display: flex; align-items: center; gap: 12px; }
+    input[type=range] { flex: 1; accent-color: #185FA5; }
+    .range-val { font-size: 14px; font-weight: 600; color: #185FA5; min-width: 70px; text-align: right; }
+    .cat-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .cat-btn {
+      font-size: 13px; padding: 6px 14px; border-radius: 20px;
+      border: 1px solid #ddd; background: #fff; color: #555; cursor: pointer;
+    }
+    .cat-btn.active { background: #185FA5; color: #fff; border-color: #185FA5; }
+    .loc-btn {
+      width: 100%; padding: 11px; font-size: 14px; font-weight: 600;
+      border-radius: 10px; border: 1px solid #185FA5;
+      background: #e6f1fb; color: #185FA5; cursor: pointer; margin-bottom: 10px;
+    }
+    .loc-status { font-size: 12px; color: #888; text-align: center; min-height: 18px; }
+    .search-btn {
+      width: 100%; padding: 14px; font-size: 15px; font-weight: 600;
+      border-radius: 12px; border: none; background: #185FA5;
+      color: #fff; cursor: pointer; margin-bottom: 20px;
+    }
+    .search-btn:disabled { background: #ccc; cursor: not-allowed; }
+    .search-btn:active:not(:disabled) { opacity: 0.8; }
+    .result-card {
+      background: #fff; border-radius: 14px; padding: 16px;
+      margin-bottom: 12px; border: 1px solid #e8e8e4; position: relative;
+    }
+    .result-card.top { border: 2px solid #185FA5; }
+    .rank { position: absolute; top: 14px; right: 16px; font-size: 22px; font-weight: 700; color: #ddd; }
+    .rest-name { font-size: 16px; font-weight: 600; margin-bottom: 8px; padding-right: 30px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .badge { font-size: 12px; padding: 3px 9px; border-radius: 10px; background: #f0f0ea; color: #555; }
+    .badge.dist { background: #e6f1fb; color: #185FA5; }
+    .badge.drive { background: #fff3e0; color: #e65100; }
+    .badge.rating { background: #fff8e1; color: #f57c00; }
+    .badge.cat { background: #f3e5f5; color: #7b1fa2; }
+    .reason { font-size: 12px; color: #185FA5; background: #e6f1fb; padding: 6px 10px; border-radius: 8px; margin-bottom: 10px; }
+    .address { font-size: 12px; color: #888; margin-bottom: 8px; }
+    .score-label { font-size: 11px; color: #aaa; display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .bar-bg { height: 4px; background: #f0f0ea; border-radius: 2px; }
+    .bar { height: 4px; background: #185FA5; border-radius: 2px; }
+    .empty { text-align: center; padding: 30px 0; color: #aaa; font-size: 14px; line-height: 1.8; }
+    .loading { text-align: center; padding: 30px 0; color: #185FA5; font-size: 14px; }
+    .map-link {
+      display: inline-block; margin-top: 8px;
+      font-size: 12px; color: #185FA5; text-decoration: none;
+      border: 1px solid #185FA5; border-radius: 8px; padding: 4px 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🍱 점심 식당 추천기</h1>
+
+<!-- 내 위치 -->
+<div class="card">
+  <div class="section-title">내 위치</div>
+  <button class="loc-btn" onclick="getLocation()">📍 현재 위치 가져오기</button>
+  <div class="loc-status" id="locStatus">위치를 먼저 가져와주세요</div>
+</div>
+
+<!-- 이동 수단 + 거리 -->
+<div class="card">
+  <div class="section-title">이동 수단 &amp; 거리</div>
+  <div class="mode-row">
+    <div class="mode-btn active" id="btn-walk" onclick="setMode('walk')">🚶 도보</div>
+    <div class="mode-btn" id="btn-drive" onclick="setMode('drive')">🚗 차량</div>
+  </div>
+  <div class="range-row">
+    <input type="range" id="distRange" min="5" max="30" value="10" step="5"
+      oninput="document.getElementById('distVal').textContent = this.value + '분 이내'">
+    <span class="range-val" id="distVal">10분 이내</span>
+  </div>
+</div>
+
+<!-- 카테고리 -->
+<div class="card">
+  <div class="section-title">음식 카테고리</div>
+  <div class="cat-grid">
+    <div class="cat-btn active" onclick="toggleCat(this,'한식')">한식</div>
+    <div class="cat-btn" onclick="toggleCat(this,'일식')">일식</div>
+    <div class="cat-btn" onclick="toggleCat(this,'중식')">중식</div>
+    <div class="cat-btn" onclick="toggleCat(this,'양식')">양식</div>
+    <div class="cat-btn" onclick="toggleCat(this,'분식')">분식</div>
+    <div class="cat-btn" onclick="toggleCat(this,'패스트푸드')">패스트푸드</div>
+    <div class="cat-btn" onclick="toggleCat(this,'전체')">전체</div>
+  </div>
+</div>
+
+<button class="search-btn" id="searchBtn" onclick="searchRestaurants()" disabled>
+  📍 위치를 먼저 가져와주세요
+</button>
+
+<div id="results"></div>
+
+<script>
+  // =============================================
+  // ★ 여기에 REST API 키를 입력하세요 ★
+  // =============================================
+  const KAKAO_API_KEY = 'ca9e68e1a76f309b274938ec3a09b78c';
+
+  let myLat = null;
+  let myLng = null;
+  let currentMode = 'walk';
+  let selectedCats = new Set(['한식']);
+
+  // 카테고리 코드 매핑 (카카오 API 기준)
+  const CAT_CODE = {
+    '한식': 'FD6', '일식': 'FD6', '중식': 'FD6',
+    '양식': 'FD6', '분식': 'FD6', '패스트푸드': 'FD6',
+    '전체': 'FD6'
+  };
+
+  // 도보 속도: 분당 약 67m, 차량: 분당 약 500m
+  const SPEED = { walk: 67, drive: 500 };
+
+  // 현재 위치 가져오기
+  function getLocation() {
+    document.getElementById('locStatus').textContent = '위치 가져오는 중...';
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        myLat = pos.coords.latitude;
+        myLng = pos.coords.longitude;
+        document.getElementById('locStatus').textContent = `✅ 위치 확인됨 (위도 ${myLat.toFixed(4)}, 경도 ${myLng.toFixed(4)})`;
+        const btn = document.getElementById('searchBtn');
+        btn.disabled = false;
+        btn.textContent = '지금 가기 좋은 식당 찾기 →';
+      },
+      err => {
+        document.getElementById('locStatus').textContent = '❌ 위치 접근이 거부됐어요. 브라우저 위치 권한을 허용해주세요.';
+      }
+    );
+  }
+
+  // 이동 수단 전환
+  function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('btn-walk').classList.toggle('active', mode === 'walk');
+    document.getElementById('btn-drive').classList.toggle('active', mode === 'drive');
+    const slider = document.getElementById('distRange');
+    if (mode === 'walk') { slider.max = 30; slider.value = Math.min(slider.value, 30); }
+    else { slider.max = 40; }
+    document.getElementById('distVal').textContent = slider.value + '분 이내';
+  }
+
+  // 카테고리 토글
+  function toggleCat(el, cat) {
+    if (cat === '전체') {
+      selectedCats.clear();
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      selectedCats.add('전체');
+      return;
+    }
+    document.querySelectorAll('.cat-btn').forEach(b => {
+      if (b.textContent === '전체') b.classList.remove('active');
+    });
+    selectedCats.delete('전체');
+    if (el.classList.contains('active')) {
+      el.classList.remove('active');
+      selectedCats.delete(cat);
+    } else {
+      el.classList.add('active');
+      selectedCats.add(cat);
+    }
+    if (selectedCats.size === 0) {
+      document.querySelector('.cat-btn:last-child').classList.add('active');
+      selectedCats.add('전체');
+    }
+  }
+
+  // 두 좌표 사이 거리 계산 (미터)
+  function calcDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  // 거리(m) → 이동 시간(분) 계산
+  function distToMin(meters) {
+    return Math.round(meters / SPEED[currentMode]);
+  }
+
+  // 점수 계산
+  function calcScore(travelMin, rating, maxDist) {
+    let score = 0;
+    score += Math.round(Math.max(0, (maxDist - travelMin) / maxDist * 40)); // 거리 40점
+    score += Math.round((rating / 5) * 20);                                  // 평점 20점
+    // 카테고리 점수는 검색 시 이미 필터됨 → 보너스 10점
+    score += 10;
+    // 영업 중 점수 (카카오 API에서 영업시간 미제공 시 기본 30점 부여)
+    score += 30;
+    return Math.min(score, 100);
+  }
+
+  // 카카오 로컬 API로 주변 식당 검색
+  async function searchRestaurants() {
+    if (!myLat || !myLng) return;
+
+    const maxDist = parseInt(document.getElementById('distRange').value);
+    const radiusMeters = maxDist * SPEED[currentMode]; // 이동 시간 → 반경(m)
+
+    document.getElementById('results').innerHTML = '<div class="loading">🔍 주변 식당 검색 중...</div>';
+
+    // 카카오 키워드 검색 API 호출
+    const keyword = selectedCats.has('전체') ? '음식점' : [...selectedCats].join(' ');
+    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(keyword)}&category_group_code=FD6&x=${myLng}&y=${myLat}&radius=${Math.min(radiusMeters, 20000)}&size=15&sort=distance`;
+
+    try {
+      const res = await fetch(url, {
+        headers: { 'Authorization': `KakaoAK ${KAKAO_API_KEY}` }
+      });
+      const data = await res.json();
+
+      if (!data.documents || data.documents.length === 0) {
+        document.getElementById('results').innerHTML =
+          '<div class="empty">주변에 검색된 식당이 없어요.<br>거리 조건을 넓혀보세요.</div>';
+        return;
+      }
+
+      // 거리 필터 + 점수 계산
+      let results = data.documents
+        .map(r => {
+          const distM = parseFloat(r.distance);
+          const travelMin = distToMin(distM);
+          const rating = r.rating ? parseFloat(r.rating) : 4.0;
+          return {
+            name: r.place_name,
+            address: r.road_address_name || r.address_name,
+            category: r.category_name,
+            distM,
+            travelMin,
+            rating,
+            score: calcScore(travelMin, rating, maxDist),
+            url: r.place_url
+          };
+        })
+        .filter(r => r.travelMin <= maxDist)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+
+      if (results.length === 0) {
+        document.getElementById('results').innerHTML =
+          '<div class="empty">조건에 맞는 식당이 없어요.<br>거리나 카테고리를 넓혀보세요.</div>';
+        return;
+      }
+
+      const isDrive = currentMode === 'drive';
+      document.getElementById('results').innerHTML = results.map((r, i) => `
+        <div class="result-card ${i === 0 ? 'top' : ''}">
+          <div class="rank">${i + 1}</div>
+          <div class="rest-name">${r.name}</div>
+          <div class="meta">
+            <span class="badge ${isDrive ? 'drive' : 'dist'}">${isDrive ? '🚗' : '🚶'} ${r.travelMin}분</span>
+            <span class="badge rating">★ ${r.rating}</span>
+            <span class="badge cat">${r.category.split(' > ').pop()}</span>
+          </div>
+          <div class="address">📍 ${r.address}</div>
+          <div class="reason">${i === 0 ? '🏆 지금 가장 추천하는 식당이에요!' : `도보 ${r.travelMin}분 거리의 ${r.category.split(' > ').pop()}`}</div>
+          <div class="score-label"><span>추천 점수</span><span>${r.score} / 100</span></div>
+          <div class="bar-bg"><div class="bar" style="width:${r.score}%"></div></div>
+          <a class="map-link" href="${r.url}" target="_blank">카카오맵에서 보기 →</a>
+        </div>
+      `).join('');
+
+    } catch (e) {
+      document.getElementById('results').innerHTML =
+        '<div class="empty">❌ API 키를 확인해주세요.<br>restaurant.html 파일에서<br>YOUR_REST_API_KEY_HERE 부분을<br>실제 키로 바꿔주세요.</div>';
+    }
+  }
+</script>
+</body>
+</html>
